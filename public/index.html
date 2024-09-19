@@ -1,0 +1,107 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OpenAI Assistant Interface</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #responseWindow { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+        .prompt { color: blue; }
+        .response { color: green; }
+        #stateWindow { border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>OpenAI Assistant Interface</h1>
+    <div>
+        <label for="assistantName">Assistant Name:</label>
+        <input type="text" id="assistantName" placeholder="Enter assistant name">
+    </div>
+    <div>
+        <label for="instructions">Assistant Instructions:</label>
+        <input type="text" id="instructions" placeholder="Enter assistant instructions">
+    </div>
+    <button id="createAssistantBtn">Create/Get Assistant</button>
+    <br><br>
+    <button id="createThreadBtn">Create New Thread</button>
+    <br><br>
+    <div>
+        <label for="prompt">Prompt:</label>
+        <textarea id="prompt" rows="4" cols="50" placeholder="Enter your prompt here"></textarea>
+    </div>
+    <button id="runThreadBtn">Run Thread</button>
+    <br><br>
+    <div id="responseWindow"></div>
+    <div id="stateWindow"></div>
+
+    <script>
+        let assistantName = '';
+        let assistantInstructions = '';
+        let threadId = '';
+        let messages = [];
+
+        document.getElementById('createAssistantBtn').addEventListener('click', async () => {
+            assistantName = document.getElementById('assistantName').value;
+            assistantInstructions = document.getElementById('instructions').value;
+
+            try {
+                const response = await fetch('/api/assistant', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: assistantName, instructions: assistantInstructions })
+                });
+                const data = await response.json();
+                updateStateWindow(`Assistant ID: ${data.assistant_id}`);
+            } catch (error) {
+                console.error('Error creating assistant:', error);
+            }
+        });
+
+        document.getElementById('createThreadBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/thread', { method: 'POST' });
+                const data = await response.json();
+                threadId = data.thread_id;
+                updateStateWindow(`Thread ID: ${threadId}`);
+            } catch (error) {
+                console.error('Error creating thread:', error);
+            }
+        });
+
+        document.getElementById('runThreadBtn').addEventListener('click', async () => {
+            const prompt = document.getElementById('prompt').value;
+            try {
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assistantName, instructions: prompt })
+                });
+                const data = await response.json();
+                messages.push({ role: 'user', content: prompt });
+                messages.push({ role: 'assistant', content: data.messages.join('\n') });
+                updateResponseWindow();
+            } catch (error) {
+                console.error('Error running thread:', error);
+            }
+        });
+
+        function updateResponseWindow() {
+            const responseWindow = document.getElementById('responseWindow');
+            responseWindow.innerHTML = '';
+            messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = msg.role === 'user' ? 'prompt' : 'response';
+                messageDiv.textContent = msg.content;
+                responseWindow.appendChild(messageDiv);
+            });
+            responseWindow.scrollTop = responseWindow.scrollHeight;
+        }
+
+        function updateStateWindow(stateText) {
+            const stateWindow = document.getElementById('stateWindow');
+            stateWindow.textContent = stateText;
+        }
+    </script>
+</body>
+</html>
