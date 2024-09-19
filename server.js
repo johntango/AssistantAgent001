@@ -1,16 +1,28 @@
 // server.js
+// server.js
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { openai, create_or_get_assistant, create_thread, run_named_assistant } from './workerFunctions.js';
-// server.js
+import dotenv from 'dotenv';
+import {
+    create_or_get_assistant,
+    create_thread,
+    run_named_assistant
+} from './workerFunctions.js';
+
+// Load environment variables
+dotenv.config();
+
+// Determine __dirname since it's not available in ES6 modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = 3000;
 
-// Middleware to parse JSON requests
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Middleware to parse JSON and URL-encoded data
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -20,6 +32,7 @@ app.post('/api/assistant', async (req, res) => {
     const { name, instructions } = req.body;
     try {
         const assistant = await create_or_get_assistant(name, instructions);
+        console.log("Got assistant: " + assistant.id)
         res.json({ assistant_id: assistant.id });
     } catch (error) {
         console.error(error);
@@ -47,6 +60,17 @@ app.post('/api/run', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to run assistant.' });
+    }
+});
+
+// API endpoint to list all assistants
+app.get('/api/assistants', async (req, res) => {
+    try {
+        const { assistants } = await create_or_get_assistant(); // Adjust based on actual implementation
+        res.json({ assistants });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to retrieve assistants.' });
     }
 });
 

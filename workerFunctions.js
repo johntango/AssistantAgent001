@@ -12,7 +12,7 @@ let assistants = {}
 //let tools = [{ role:"function", type: "code_interpreter" }, { role:"function",type: "retrieval" }]
 let tools = [];
 
-
+let key = process.env.OPENAI_API_KEY;
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
