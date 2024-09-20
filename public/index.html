@@ -1,107 +1,304 @@
-<!-- public/index.html -->
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>OpenAI Assistant Interface</title>
+<html data-bs-theme="dark">
+  <head>
+    <title>Managing Assistants MIT Mark 1</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #responseWindow { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
-        .prompt { color: blue; }
-        .response { color: green; }
-        #stateWindow { border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
+      .bd-mode-toggle {
+        z-index: 1500;
+      }
+
+      .bd-mode-toggle .dropdown-menu .active .bi {
+        display: block !important;
+      }
+
+      .label-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: left;
+        margin-left: 20px;
+      }
+      .card {
+        margin: 20 auto; /* Added */
+        float: none; /* Added */
+        margin-bottom: 10px; /* Added */
+      }
+      .card-body {
+        padding: 30px;
+      }
+      .llm-output {
+        font-family: "Courier New", Courier, monospace;
+        font-size: 14px;
+        background-color: #b2e8a7;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        padding: 16px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #040404;
+        height: 300px;
+        width: 70%;
+      }
+      .json-output {
+        font-family: "Courier New", Courier, monospace;
+        font-size: 14px;
+        background-color: #345b83;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        padding: 16px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #ecedd9;
+        height: 200px;
+        width: 70%;
+      }
+      .function-output {
+        font-family: "Courier New", Courier, monospace;
+        font-size: 14px;
+        background-color: #63aad6;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        padding: 16px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #edf466;
+        height: 300px;
+        width: 70%;
+      }
     </style>
-</head>
-<body>
-    <h1>OpenAI Assistant Interface</h1>
-    <div>
-        <label for="assistantName">Assistant Name:</label>
-        <input type="text" id="assistantName" placeholder="Enter assistant name">
-    </div>
-    <div>
-        <label for="instructions">Assistant Instructions:</label>
-        <input type="text" id="instructions" placeholder="Enter assistant instructions">
-    </div>
-    <button id="createAssistantBtn">Create/Get Assistant</button>
-    <br><br>
-    <button id="createThreadBtn">Create New Thread</button>
-    <br><br>
-    <div>
-        <label for="prompt">Prompt:</label>
-        <textarea id="prompt" rows="4" cols="50" placeholder="Enter your prompt here"></textarea>
-    </div>
-    <button id="runThreadBtn">Run Thread</button>
-    <br><br>
-    <div id="responseWindow"></div>
-    <div id="stateWindow"></div>
+    <!-- jQuery library -->
 
     <script>
-        let assistantName = '';
-        let assistantInstructions = '';
-        let threadId = '';
-        let messages = [];
+      let state = {
+        assistant_id: "",
+        assistant_name: "",
+        dir_path: "",
+        news_path: "",
+        thread_id: "",
+        user_message: "",
+        run_id: "",
+        run_status: "",
+        vector_store_id: ""
+      };
 
-        document.getElementById('createAssistantBtn').addEventListener('click', async () => {
-            assistantName = document.getElementById('assistantName').value;
-            assistantInstructions = document.getElementById('instructions').value;
+      async function get_data_from_elements() {
+        for (let key in state) {
+          if(document.getElementById(key) != null){
+            state[key] = document.getElementById(key).value;
+          }
+        }
+        console.log(`getting data from elements: ${JSON.stringify(state)}`);
+      }
 
-            try {
-                const response = await fetch('/api/assistant', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: assistantName, instructions: assistantInstructions })
-                });
-                const data = await response.json();
-                updateStateWindow(`Assistant ID: ${data.assistant_id}`);
-            } catch (error) {
-                console.error('Error creating assistant:', error);
-            }
-        });
+      function write_data_to_elements(response) {
+        for (let key in response) {
+          if(document.getElementById(key)!= null){
+            document.getElementById(key).value = response[key];
+          }
+        }
+        console.log(`writing data to elements: ${JSON.stringify(state)}`);
+      }
 
-        document.getElementById('createThreadBtn').addEventListener('click', async () => {
-            try {
-                const response = await fetch('/api/thread', { method: 'POST' });
-                const data = await response.json();
-                threadId = data.thread_id;
-                updateStateWindow(`Thread ID: ${threadId}`);
-            } catch (error) {
-                console.error('Error creating thread:', error);
-            }
-        });
-
-        document.getElementById('runThreadBtn').addEventListener('click', async () => {
-            const prompt = document.getElementById('prompt').value;
-            try {
-                const response = await fetch('/api/run', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ assistantName, instructions: prompt })
-                });
-                const data = await response.json();
-                messages.push({ role: 'user', content: prompt });
-                messages.push({ role: 'assistant', content: data.messages.join('\n') });
-                updateResponseWindow();
-            } catch (error) {
-                console.error('Error running thread:', error);
-            }
-        });
-
-        function updateResponseWindow() {
-            const responseWindow = document.getElementById('responseWindow');
-            responseWindow.innerHTML = '';
-            messages.forEach(msg => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = msg.role === 'user' ? 'prompt' : 'response';
-                messageDiv.textContent = msg.content;
-                responseWindow.appendChild(messageDiv);
-            });
-            responseWindow.scrollTop = responseWindow.scrollHeight;
+      function write_to_div(route, message) {
+        // Ensure response is a valid array;
+        if (!Array.isArray(message)) {
+          let responseDiv = document.getElementById("response");
+          responseDiv.innerHTML = JSON.stringify(message);
+          return;
         }
 
-        function updateStateWindow(stateText) {
-            const stateWindow = document.getElementById('stateWindow');
-            stateWindow.textContent = stateText;
+        // Select the target div
+        let responseDiv = document.getElementById("response");
+        if (!responseDiv) {
+          console.error("No div with id 'response' found.");
+          return;
         }
+
+        // Clear previous contents
+        responseDiv.innerHTML = "";
+
+        // Iterate through each object in the array
+        message.forEach((item) => {
+          // Create a new span element for each item
+          var span = document.createElement("span");
+          span.style.color = "black"; // Default color
+          // check if item.content or item.function
+          let matches = [];
+          if ("content" in item) {
+            span.textContent = item.content;
+            // check for ``` that indicates code block
+            if (item.content.includes("```")) {
+              const regex = /```([^```]+)```/g;
+
+              // Find matches
+
+              let match;
+              while ((match = regex.exec(span.textContent)) !== null) {
+                matches.push(match[1].trim());
+              }
+
+              // Insert extracted text into the div
+              const outputDiv = document.getElementById("json_output");
+              outputDiv.textContent = matches.join("\n\n");
+            }
+            // remove text between ``` from the content
+            span.textContent = span.textContent.replace(matches, "");
+            span.textContent = span.textContent.replace("\n", "");
+          }
+          // check if item.function exists
+
+          if ("function" in item) {
+            span.textContent = JSON.stringify(item.function);
+          } else {
+            span.textContent = JSON.stringify(item);
+          }
+
+          // Assign color based on the role
+          switch (item.role) {
+            case "user":
+              span.style.color = "green";
+              break;
+            case "assistant":
+              span.style.color = "blue";
+              break;
+            case "system":
+              span.style.color = "red";
+              break;
+            case "function":
+              span.style.color = "purple";
+              break;
+            default:
+              span.style.color = "black"; // Default color
+          }
+
+          // Append the span to the div
+          responseDiv.appendChild(span);
+          responseDiv.appendChild(document.createElement("br")); // Add a line break for readability
+        });
+      }
+      async function sendRequest(route) {
+        get_data_from_elements();
+        console.log(`sending data: ${JSON.stringify(state)} to ${route}`);
+        let response = await fetch(`/${route}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(state),
+          mode: "cors",
+        });
+        let res = await response.json(); // we always get back {message, state}
+        console.log(`In UI response: ${JSON.stringify(res)}`);
+        await parse_response(route, res);
+
+        return;
+      }
+      async function parse_response(route, res) {
+       
+        console.log(`In UI parse_response ${route} data =: ${JSON.stringify(res.state)}`);
+        write_data_to_elements(res.state);
+        console.log(`Updated state:: ${JSON.stringify(state)}`);
+        console.log(`write to div: ${JSON.stringify(res.message)}`);
+        write_to_div(route, res.message);
+      }
     </script>
-</body>
+  </head>
+  <body>
+    <div class="card">
+      <div class="card-body">
+        <section class="part2">
+          <div class="container">
+            <div class="row" style="width: 70%">
+              <div class="col-sm-4">
+                <img
+                  alt=""
+                  class="resize-image left-side"
+                  id="image1"
+                  src="logo001.jpg"
+                  width="70"
+                  height="50"
+                />
+              </div>
+              <div class="col-sm-4">
+                <h4 class="left-side-text">MIT Assistant Builder 0.0.3</h4>
+              </div>
+            </div>
+          </div>
+        </section>
+        <label for="assistant_id" class="label-container">Assistant</label>
+
+        <button
+          class="btn btn-primary mr-1"
+          type="submit"
+          onclick="sendRequest('api/assistant')"
+        >
+          Create and Run
+        </button>
+        <button
+          class="btn btn-primary mr-1"
+          type="submit"
+          onclick="sendRequest('api/assistant')"
+        >
+          Get Assistant by Name
+        </button>
+        <input
+          type="text"
+          id="assistant_name"
+          name="assistant_name"
+          value="Agent Name"
+        />
+        <button
+          class="btn btn-primary mr-1"
+          type="submit"
+          onclick="sendRequest('api/assistants')"
+        >
+          List
+        </button>
+        <input
+          type="text"
+          id="assistant_id"
+          name="assistant_id"
+          value="Agent_id"
+        />
+       
+        <label for="thread_id" class="label-container">Thread ID:</label>
+        <button
+          class="btn btn-primary mr-1"
+          type="submit"
+          onclick="sendRequest('api/thread')"
+        >
+          Create
+        </button>
+        <input type="text" id="thread_id" name="thread_id" value="thread_id" />
+
+        
+        <label for="user_message" class="label-container">User Message:</label>
+        <input type="text" id="user_message" name="user_message" value="User Message" />
+
+        <label for="run_id" class="label-container">Run ID:</label>
+        <button
+          class="btn btn-primary mr-1"
+          type="submit"
+          onclick="sendRequest('api/run')"
+        >
+          Create
+        </button>
+        <input type="text" id="run_id" name="run_id" value="run_id" />
+        <div>
+          <label for="response">Response from Agent:</label>
+        </div>
+        <div id="response" class="llm-output"></div>
+        <label for="response">JSON Output:</label>
+        <div id="json_output" class="json-output"></div>
+        <label for="response">Functions:</label>
+        <div id="functions" class="function-output"></div>
+      </div>
+    </div>
+  </body>
 </html>
