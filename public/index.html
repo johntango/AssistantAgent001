@@ -84,12 +84,13 @@
         user_message: "",
         run_id: "",
         run_status: "",
-        vector_store_id: ""
+        vector_store_id: "",
+        messages: "",
       };
 
       async function get_data_from_elements() {
         for (let key in state) {
-          if(document.getElementById(key) != null){
+          if (document.getElementById(key) != null) {
             state[key] = document.getElementById(key).value;
           }
         }
@@ -98,7 +99,7 @@
 
       function write_data_to_elements(response) {
         for (let key in response) {
-          if(document.getElementById(key)!= null){
+          if (document.getElementById(key) != null) {
             document.getElementById(key).value = response[key];
           }
         }
@@ -200,8 +201,9 @@
         return;
       }
       async function parse_response(route, res) {
-       
-        console.log(`In UI parse_response ${route} data =: ${JSON.stringify(res.state)}`);
+        console.log(
+          `In UI parse_response ${route} data =: ${JSON.stringify(res.state)}`
+        );
         write_data_to_elements(res.state);
         console.log(`Updated state:: ${JSON.stringify(state)}`);
         console.log(`write to div: ${JSON.stringify(res.message)}`);
@@ -266,7 +268,7 @@
           name="assistant_id"
           value="Agent_id"
         />
-       
+
         <label for="thread_id" class="label-container">Thread ID:</label>
         <button
           class="btn btn-primary mr-1"
@@ -277,9 +279,13 @@
         </button>
         <input type="text" id="thread_id" name="thread_id" value="thread_id" />
 
-        
         <label for="user_message" class="label-container">User Message:</label>
-        <input type="text" id="user_message" name="user_message" value="User Message" />
+        <input
+          type="text"
+          id="user_message"
+          name="user_message"
+          value="User Message"
+        />
 
         <label for="run_id" class="label-container">Run ID:</label>
         <button

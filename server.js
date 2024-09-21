@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import fs from 'fs';
 import { URL } from 'url';
+import { Console } from 'console';
 
 // Load environment variables
 dotenv.config();
@@ -24,12 +25,19 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+// Define global variables focus to keep track of the assistant, file, thread and run
+let state = { assistant_id: "", assistant_name: "", dir_path: "", news_path: "", thread_id: "", user_message: "", run_id: "", run_status: "", vector_store_id: "" , messages: ""};
+
 // API endpoint to create or get an assistant
 app.post('/api/assistant', async (req, res) => {
     state = req.body;
     let instructions = ""
     try {
-        const assistant = await create_or_get_assistant(state.assistant_name, state.user_message);
+        const assistant = await get_assistant(state.assistant_name);
         console.log("Got assistant: " + assistant.id)
         if (assistant != null) {
             state.assistant_id = assistant.id;
@@ -51,7 +59,6 @@ app.post('/api/thread', async (req, res) => {
         let response = await create_thread();
         console.log("create_thread response: " + JSON.stringify(response));
         state.thread_id = response.id;
-
         res.status(200).json({ message: `got thread ${state.thread_id}`, "state": state });
     }
     catch (error) {
@@ -64,7 +71,8 @@ app.post('/api/thread', async (req, res) => {
 app.post('/api/run', async (req, res) => {
     state = req.body;
     try {
-        const messages = await run_agent()
+        let messages = await run_agent()
+        state.messages = messages;
         res.json({ message: messages, "state": state });
     } catch (error) {
         console.error(error);
@@ -72,82 +80,18 @@ app.post('/api/run', async (req, res) => {
     }
 });
 
-// API endpoint to list all assistants
-app.get('/api/assistants', async (req, res) => {
-    state = req.data;
-    try {
-        const { assistants } = await create_or_get_assistant(); // Adjust based on actual implementation
-        res.json({ message: assistants, state: state });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to retrieve assistants.', state: state });
-    }
-});
 let assistants = {}
 //let tools = [{ role:"function", type: "code_interpreter" }, { role:"function",type: "retrieval" }]
 let tools = [];
 
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-// Define global variables focus to keep track of the assistant, file, thread and run
-let state = { assistant_id: "", assistant_name: "", dir_path: "", news_path: "", thread_id: "", user_message: "", run_id: "", run_status: "", vector_store_id: "" };
-
 // requires action is a special case where we need to call a function
 async function get_and_run_tool(response) {
-    let thread_id = state.thread_id;
-    let run_id = state.run_id;
-    // extract function to be called from response
-    const toolCalls = response.required_action.submit_tool_outputs.tool_calls;
-    let toolOutputs = []
-    let functions_available = await getFunctions();
-    for (let toolCall of toolCalls) {
-        console.log("toolCall: " + JSON.stringify(toolCall));
-        let functionName = toolCall.function.name;
-        // get function from functions_available
-        let functionToExecute = functions_available[`${functionName}`];
-
-        if (functionToExecute.execute) {
-            let args = JSON.parse(toolCall.function.arguments);
-            let argsArray = Object.keys(args).map((key) => args[key]);
-            // insert as first argument pointer to memoryDB
-            // check if functionToExecute contains match to  store_in_memory   
-
-            let functionResponse = await functionToExecute.execute(...argsArray);
-            toolOutputs.push({
-                tool_call_id: toolCall.id,
-                output: JSON.stringify(functionResponse)
-            });
-            let text = JSON.stringify({ message: `function ${functionName} called`, state: state });
-            await openai.beta.threads.runs.submitToolOutputs(
-                thread_id,
-                run_id,
-                {
-                    tool_outputs: toolOutputs
-                }
-            );
-            console.log(`FunctionResponse from ${functionName}:  ${JSON.stringify(functionResponse)}`);
-        }
-        continue;
-    }
-}
-function extract_assistant_id(data) {
-    let assistant_id = "";
-    if (data.length > 0) {
-        assistant_id = data[0].id;
-        tools = data[0].tools
-        // loop over assistants and extract all the assistants into a dictionary
-        for (let assistant of data) {
-            assistants[assistant.name] = assistant;
-        }
-    }
-
-    console.log("got assistant_id: " + assistant_id);
-    return { assistant_id: assistant_id, tools: tools }
+   
 }
 
-async function create_or_get_assistant(name, instructions) {
+
+async function get_assistant(name, instructions) {
     const response = await openai.beta.assistants.list({
         order: "desc",
         limit: 20,
@@ -166,17 +110,12 @@ async function create_or_get_assistant(name, instructions) {
         }
     }
     if (state.assistant_id == "") {
-        assistant = await openai.beta.assistants.create({
-            name: name,
-            instructions: instructions,
-            tools: tools,
-            model: "gpt-4-1106-preview",
-        });
-        state.assistant_id = assistant.id
-        state.assistant_name = name;
+        console.log("Creating new assistant")
+        assistant = await create_assistant(name, instructions, tools)
     }
     return assistant;
 }
+
 // create a new thread
 
 async function create_thread() {
@@ -194,107 +133,7 @@ async function create_thread() {
     return response;
 }
 
-async function getFunctions() {
-    const files = fs.readdirSync(path.resolve(__dirname, "./functions"));
-    const openAIFunctions = {};
-
-    for (const file of files) {
-        if (file.endsWith(".js")) {
-            const moduleName = file.slice(0, -3);
-            const modulePath = `./functions/${moduleName}.js`;
-            const { details, execute } = await import(modulePath);
-
-            openAIFunctions[moduleName] = {
-                "details": details,
-                "execute": execute
-            };
-        }
-    }
-    return openAIFunctions;
-}
-
-
-const run_named_assistant = async (name, instructions) => {
-    // this puts a message onto a thread and then runs the assistant on that thread
-    let run_id;
-    let messages = [];
-    const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-    });
-    // check if we have a thread_id
-    if (state.thread_id == "") {
-        // get a new thread to operate on
-        let thread = await openai.beta.threads.create()
-        state.thread_id = thread.id;
-    }
-
-
-    if (state.assistant_id == "") {
-        // get assistant id
-        const response = await openai.beta.assistants.list({
-            order: "desc",
-            limit: 10,
-        })
-        // loop over all assistants and find the one with the name name
-        for (let obj in response.data) {
-            let assistant = response.data[obj];
-            // change assistant.name to small letters
-            if (assistant.name.toLowerCase() == name) {
-                state.assistant_id = assistant.id;
-                break
-            }
-        }
-    }
-
-
-
-    async function runAssistant() {
-        try {
-            await openai.beta.threads.messages.create(state.thread_id,
-                {
-                    role: "user",
-                    content: user_instructions,
-                })
-            let run = await openai.beta.threads.runs.create(state.thread_id, {
-                assistant_id: state.assistant_id
-            })
-            state.run_id = run.id;
-            get_run_status(state.thread_id, state.run_id, messages);
-            let message = await openai.beta.threads.messages.list(thread_id)
-            await addLastMessagetoArray(message, messages)
-        }
-        catch (error) {
-            console.log(error);
-            return error;
-        }
-    }
-    async function get_run_status(thread_id, run_id, messages) {
-        try {
-            let runStatus = await openai.beta.threads.runs.retrieve(thread_id, run_id);
-            while (runStatus.status !== 'completed') {
-                await new Promise(resolve => setTimeout(resolve, 500)); // Wait for 1 second
-                runStatus = await openai.beta.threads.runs.retrieve(thread_id, run_id);
-            }
-
-            //await openai.beta.threads.del(thread_id)
-        }
-        catch (error) {
-            console.log(error);
-            return error;
-        }
-    }
-    async function addLastMessagetoArray(message, messages) {
-        messages.push(message.data[0].content[0].text.value)
-        console.log("PRINTING MESSAGES: ");
-        console.log(message.data[0].content[0].text.value)
-    }
-
-    await runAssistant();
-    // delete the thread
-
-    return messages;
-}
-// runs the assistant assuming thread and assistant exist already
+// This V2 version works using AndPoll. It does not enable Function calls yet
 async function run_agent() {
     try {
         let thread_id = state.thread_id;
@@ -314,103 +153,19 @@ async function run_agent() {
 
         // now retrieve the messages
         let messages = await openai.beta.threads.messages.list(thread_id);
-        messages = messages.data;
-        let message_content = messages[0].content[0].text.value
+        console.log(`Run Finished: ${JSON.stringify(messages.data)}`)
+        messages = messages.data; // this is an array of messages
+        let message_content = ""
+        messages.map(message => {
+            message_content += message.content[0].text.value;
+        })      
+        state.messages = message_content;
         return message_content;
-
     }
     catch (error) {
         console.log(error);
         return error;
     }
-}
-const write_assistant_function = async (name, instructions) => {
-
-    let text = `
-    import OpenAI from 'openai';
-    import fs from 'fs';
-    import { get } from 'http';
-    import { run_named_assistant } from '../write_run_named_assistant.js';
-
-    const execute = async (name, instructions) => {
-        let message = await run_named_assistant("${name}", instructions);
-        return message;
-    }
-
-    const details = {
-        "name": "${name}",
-        "parameters": {
-        "type": "object",
-        "properties": {
-            "name": {
-            "type": "string",
-            "description": "The name of the tool. eg writer"
-            },
-            "instructions": {
-            "type": "string",
-            "description": "The instructions to the assistant. eg Write a story about a dog"
-            }
-        },
-        "required": [
-            "name",
-            "instructions"
-        ]
-        },
-        "description": "This is a ${name} assistant that follows instructions"
-    }
-    export { execute, details }; `
-
-    // write a file with the name of the assistant
-    fs.writeFile(`functions/${name}.js`, text, (err) => {
-        if (err) throw err;
-        console.log('The file has been saved!');
-    });
-    return `The ${name} assistant has been created.`
-}
-const write_tool_function = async (toolname, thefunc) => {
-
-    let text = `
-    ${thefunc}
-    const details = {
-        "name": "${toolname}",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "input": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    },
-                    "description": "An array of numbers to be summed."
-                }
-            },
-        "required": ["input"],
-        "description": "This function ${toolname} executes the task spe."
-        }
-    }
-
-    const details = {
-        "name": "${toolname}",
-        "parameters": {
-            "type": "array",
-            "items": {
-                "type": "number",
-                "description": "Array of numbers to process"
-            },
-            "description": "An array of numbers for the tool to process"
-        },
-        "description": "This is a ${toolname} that processes an array of numbers and outputs a result as a string"
-    }
-    export { execute, details }; `
-
-    // write a file with the name of the assistant
-    fs.writeFile(`functions/${toolname}.js`, text, (err) => {
-        if (err) throw err;
-        console.log('The file has been saved!');
-    });
-    // load it into the tools 
-
-    console.log(`The ${toolname} tool has been created.`);
 }
 // Start the server
 app.listen(port, () => {
