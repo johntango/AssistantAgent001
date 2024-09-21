@@ -30,7 +30,7 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 // Define global variables focus to keep track of the assistant, file, thread and run
-let state = { assistant_id: "", assistant_name: "", dir_path: "", news_path: "", thread_id: "", user_message: "", run_id: "", run_status: "", vector_store_id: "" , messages: ""};
+let state = { assistant_id: "", assistant_name: "", dir_path: "", news_path: "", thread_id: "", user_message: "", run_id: "", run_status: "", vector_store_id: "" };
 
 // API endpoint to create or get an assistant
 app.post('/api/assistant', async (req, res) => {
@@ -71,9 +71,8 @@ app.post('/api/thread', async (req, res) => {
 app.post('/api/run', async (req, res) => {
     state = req.body;
     try {
-        let messages = await run_agent()
-        console.log("run_agent response: " + JSON.stringify(messages));
-        res.json({ message: messages, "state": state });
+        let all_messages = await run_agent()
+        res.status(200).json({ message: all_messages, state: state })
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Failed to run assistant.', "state": state });
@@ -153,15 +152,26 @@ async function run_agent() {
 
         // now retrieve the messages
         let messages = await openai.beta.threads.messages.list(thread_id);
-        console.log(`Run Finished: ${JSON.stringify(messages.data)}`)
-        messages = messages.data; // this is an array of messages
-        state.messages =  messages[0].content[0].text.value;   
-        return state.messages;
+        let all_messages = get_all_messages(messages);
+        console.log(`Run Finished: ${JSON.stringify(all_messages)}`)
+        return all_messages;
     }
     catch (error) {
         console.log(error);
         return error;
     }
+}
+async function get_all_messages(response) {
+    let all_messages = [];
+    let role = "";
+    let content = "";
+    for (let message of response.data) {
+        // pick out role and content
+        role = message.role;
+        content = message.content[0].text.value;
+        all_messages.push({ role, content });
+    }
+    return all_messages
 }
 // Start the server
 app.listen(port, () => {
