@@ -72,7 +72,7 @@ app.post('/api/run', async (req, res) => {
     state = req.body;
     try {
         let messages = await run_agent()
-        state.messages = messages;
+        console.log("run_agent response: " + JSON.stringify(messages));
         res.json({ message: messages, "state": state });
     } catch (error) {
         console.error(error);
@@ -155,12 +155,8 @@ async function run_agent() {
         let messages = await openai.beta.threads.messages.list(thread_id);
         console.log(`Run Finished: ${JSON.stringify(messages.data)}`)
         messages = messages.data; // this is an array of messages
-        let message_content = ""
-        messages.map(message => {
-            message_content += message.content[0].text.value;
-        })      
-        state.messages = message_content;
-        return message_content;
+        state.messages =  messages[0].content[0].text.value;   
+        return state.messages;
     }
     catch (error) {
         console.log(error);
