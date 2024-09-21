@@ -239,13 +239,6 @@
           type="submit"
           onclick="sendRequest('api/assistant')"
         >
-          Create and Run
-        </button>
-        <button
-          class="btn btn-primary mr-1"
-          type="submit"
-          onclick="sendRequest('api/assistant')"
-        >
           Get Assistant by Name
         </button>
         <input
@@ -254,27 +247,19 @@
           name="assistant_name"
           value="Agent Name"
         />
-        <button
-          class="btn btn-primary mr-1"
-          type="submit"
-          onclick="sendRequest('api/assistants')"
-        >
-          List
-        </button>
         <input
           type="text"
           id="assistant_id"
           name="assistant_id"
-          value="Agent_id"
+          value="Assistant ID"
         />
-
         <label for="thread_id" class="label-container">Thread ID:</label>
         <button
           class="btn btn-primary mr-1"
           type="submit"
           onclick="sendRequest('api/thread')"
         >
-          Create
+          Create New Thread
         </button>
         <input type="text" id="thread_id" name="thread_id" value="thread_id" />
 
@@ -292,7 +277,7 @@
           type="submit"
           onclick="sendRequest('api/run')"
         >
-          Create
+          Run Agent
         </button>
         <input type="text" id="run_id" name="run_id" value="run_id" />
         <div>
