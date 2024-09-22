@@ -16,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Middleware to parse JSON and URL-encoded data
 app.use(express.json());
@@ -66,6 +66,17 @@ app.post('/api/thread', async (req, res) => {
         res.status(500).json({ message: 'Thread Create failed', "state": state });
     }
 });
+app.post('/api/prompt', async (req, res) => {
+    // just update the state with the new prompt
+    state = req.body;
+    try {
+        res.status(200).json({ message: `got prompt ${state.user_message}`, "state": state });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'User Message Failed', "state": state });
+    }
+});
 
 // API endpoint to run the assistant
 app.post('/api/run', async (req, res) => {
@@ -75,7 +86,7 @@ app.post('/api/run', async (req, res) => {
         res.status(200).json({ message: all_messages, state: state })
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Failed to run assistant.', "state": state });
+        res.status(500).json({ message: 'Failed to run agent.', "state": state });
     }
 });
 

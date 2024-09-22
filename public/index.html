@@ -8,71 +8,7 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     />
-    <style>
-      .bd-mode-toggle {
-        z-index: 1500;
-      }
-
-      .bd-mode-toggle .dropdown-menu .active .bi {
-        display: block !important;
-      }
-
-      .label-container {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: left;
-        margin-left: 20px;
-      }
-      .card {
-        margin: 20 auto; /* Added */
-        float: none; /* Added */
-        margin-bottom: 10px; /* Added */
-      }
-      .card-body {
-        padding: 30px;
-      }
-      .llm-output {
-        font-family: "Courier New", Courier, monospace;
-        font-size: 14px;
-        background-color: #b2e8a7;
-        border: 1px solid #e1e4e8;
-        border-radius: 6px;
-        padding: 16px;
-        white-space: pre-wrap;
-        word-break: break-word;
-        color: #040404;
-        height: 300px;
-        width: 70%;
-      }
-      .json-output {
-        font-family: "Courier New", Courier, monospace;
-        font-size: 14px;
-        background-color: #345b83;
-        border: 1px solid #e1e4e8;
-        border-radius: 6px;
-        padding: 16px;
-        white-space: pre-wrap;
-        word-break: break-word;
-        color: #ecedd9;
-        height: 200px;
-        width: 70%;
-      }
-      .function-output {
-        font-family: "Courier New", Courier, monospace;
-        font-size: 14px;
-        background-color: #63aad6;
-        border: 1px solid #e1e4e8;
-        border-radius: 6px;
-        padding: 16px;
-        white-space: pre-wrap;
-        word-break: break-word;
-        color: #edf466;
-        height: 300px;
-        width: 70%;
-      }
-    </style>
-    <!-- jQuery library -->
+    <style src="styles.css"></style>
 
     <script>
       let state = {
@@ -162,19 +98,19 @@
           // Assign color based on the role
           switch (item.role) {
             case "user":
-              span.style.color = "green";
+              span.style.color = "yellow";
               break;
             case "assistant":
-              span.style.color = "blue";
+              span.style.color = "white";
               break;
             case "system":
               span.style.color = "red";
               break;
             case "function":
-              span.style.color = "purple";
+              span.style.color = "turquoise";
               break;
             default:
-              span.style.color = "black"; // Default color
+              span.style.color = "magenta"; // Default color
           }
 
           // Append the span to the div
@@ -232,62 +168,92 @@
             </div>
           </div>
         </section>
-        <label for="assistant_id" class="label-container">Assistant</label>
-
-        <button
-          class="btn btn-primary mr-1"
-          type="submit"
-          onclick="sendRequest('api/assistant')"
-        >
-          Get Assistant by Name
-        </button>
-        <input
-          type="text"
-          id="assistant_name"
-          name="assistant_name"
-          value="Agent Name"
-        />
-        <input
-          type="text"
-          id="assistant_id"
-          name="assistant_id"
-          value="Assistant ID"
-        />
-        <label for="thread_id" class="label-container">Thread ID:</label>
-        <button
-          class="btn btn-primary mr-1"
-          type="submit"
-          onclick="sendRequest('api/thread')"
-        >
-          Create New Thread
-        </button>
-        <input type="text" id="thread_id" name="thread_id" value="thread_id" />
-
-        <label for="user_message" class="label-container">User Message:</label>
-        <input
-          type="text"
-          id="user_message"
-          name="user_message"
-          value="User Message"
-        />
-
-        <label for="run_id" class="label-container">Run ID:</label>
-        <button
-          class="btn btn-primary mr-1"
-          type="submit"
-          onclick="sendRequest('api/run')"
-        >
-          Run Agent
-        </button>
-        <input type="text" id="run_id" name="run_id" value="run_id" />
-        <div>
-          <label for="response">Response from Agent:</label>
+        <div class="container mt-5"></div>
+        <div class="row mb-3">
+          <div class="col">
+            <button
+              class="btn btn-primary mr-1"
+              type="submit"
+              onclick="sendRequest('api/assistant')"
+            >
+              Get Assistant by Name
+            </button>
+          </div>
+            <div class="col">
+              <input
+                type="text"
+                id="assistant_name"
+                name="assistant_name"
+                value="Agent Name"
+              />
+            </div>
+            <div class="col">
+              <input
+                type="text"
+                id="assistant_id"
+                name="assistant_id"
+                value="Assistant ID"
+              />
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class = "col">
+              <button
+                class="btn btn-primary mr-1"
+                type="submit"
+                onclick="sendRequest('api/thread')"
+              >
+                Create New Context Thread
+              </button>
+            </div>
+            <div class = "col">
+               <input type="text" id="thread_id" name="thread_id" value="thread_id" />
+            </div>
+            <div class = "col">
+           </div>
+          </div>
+          <div class = "row mb-3">
+            <div class = "col">
+              <button
+              class="btn btn-primary mr-1"
+              type="submit"
+              onclick="sendRequest('api/prompt')"
+            >Input User Prompt</button>
+          </div>
+          <div class = "col">
+            <input
+              type="text"
+              id="user_message"
+              name="user_message"
+              value="User Message"
+            />
+          </div>
+          <div class = "col"></div> 
+          </div>  
+            <div class = "row mb-3">
+              <div class = "col">
+                <button
+                  class="btn btn-primary mr-1"
+                  type="submit"
+                  onclick="sendRequest('api/run')"
+                >
+                  Run Agent
+                </button>
+              </div>
+              <div class = "col">
+                <input type="text" id="run_id" name="run_id" value="run_id" />
+              </div>
+              <div class = "col">
+              </div>
         </div>
-        <div id="response" class="llm-output"></div>
+
+        <div class="container mt-5">
+          <label for="response">Response from Agent:</label>
+          <div id="response" class="border p-3" style="height: 200px; overflow:auto;"></div>
         <label for="response">JSON Output:</label>
-        <div id="json_output" class="json-output"></div>
+        <div id="json_output"class="border p-3" style="height: 200px; overflow:auto;"></div>
         <label for="response">Functions:</label>
-        <div id="functions" class="function-output"></div>
+        <div id="functions" class="border p-3" style="height: 200px; overflow:auto;"></div>
       </div>
     </div>
   </body>
